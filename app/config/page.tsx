@@ -27,8 +27,8 @@ export default function Config() {
   // Efeito: Carregar dados do perfil do usuário
   useEffect(() => {
     if (!user) return;
-    setNome(user.user_metadata?.nome || "");
-    setAvatarUrl(user.user_metadata?.avatar_url || "");
+    setNome(user?.user_metadata?.nome || "");
+    setAvatarUrl(user?.user_metadata?.avatar_url || "");
   }, [user]);
 
   // Efeito: Carregar membros do grupo com segurança
@@ -48,10 +48,11 @@ export default function Config() {
 
       if (data) {
         // Mapeia os membros sem expor chaves administrativas no Client-side
+        // O uso do "?" garante que o TypeScript não acuse erro no build da Vercel
         const listaMembros = data.map((m) => {
-          const isMe = m.user_id === user.id;
+          const isMe = m.user_id === user?.id;
           return {
-            email: isMe ? user.email || "Você" : "Parceiro(a)",
+            email: isMe ? user?.email || "Você" : "Parceiro(a)",
             role: m.role,
             isMe,
           };
@@ -72,8 +73,8 @@ export default function Config() {
 
       const file = e.target.files[0];
       const fileExt = file.name.split(".").pop();
-      // Gera um nome único por usuário usando timestamp para evitar problemas de cache
-      const filePath = `${user.id}-${Date.now()}.${fileExt}`;
+      // Gera um nome único por usuário usando timestamp e optional chaining
+      const filePath = `${user?.id}-${Date.now()}.${fileExt}`;
 
       // 1. Faz o upload para o bucket público 'avatars'
       const { error: uploadError } = await supabase.storage
