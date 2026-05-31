@@ -4,21 +4,21 @@ import { useTarefas } from "@/hooks/useTarefas";
 import { useGroup } from "@/hooks/useGroup";
 import { usePresence } from "@/hooks/usePresence";
 import { useAuth } from "@/hooks/useAuth";
-import { usePushManager } from "@/hooks/usePushManager"; // Ativação do Push Notification
+import { usePushManager } from "@/hooks/usePushManager";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import Timer from "@/components/Timer";
 import { Chat } from "@/components/Chat";
 import { ReleaseModal } from "@/components/ReleaseModal";
-import { Mascote } from "@/components/Mascote";
+import { SortableTaskCard } from "@/components/SortableTarefaItem";
 
-// Componentes do dnd-kit para o Drag and Drop
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -28,72 +28,9 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
-// Sub-componente customizado para tornar cada linha da tarefa arrastável
-function SortableTaskCard({
-  t,
-  alternarTarefa,
-  editarTarefa,
-  deletarTarefa,
-}: {
-  t: any;
-  alternarTarefa: (id: number, status: boolean) => void;
-  editarTarefa: (id: number, conteudo: string) => void;
-  deletarTarefa: (id: number) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: t.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : t.feita ? 0.6 : 1,
-  };
-
-  return (
-    <li ref={setNodeRef} style={style} className="task-card flex items-center">
-      {/* Alça de arrastar discreta inserida no início da linha */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600 select-none mr-2 touch-none"
-        title="Arrastar para reordenar"
-      >
-        ☰
-      </div>
-
-      <input
-        type="checkbox"
-        className="checkbox-custom"
-        checked={t.feita}
-        onChange={() => alternarTarefa(t.id, t.feita)}
-      />
-      <input
-        className="input-main"
-        value={t.conteudo}
-        onChange={(e) => editarTarefa(t.id, e.target.value)}
-        style={{
-          textDecoration: t.feita ? "line-through" : "none",
-          fontWeight: 500,
-        }}
-      />
-      <button className="btn-delete" onClick={() => deletarTarefa(t.id)}>
-        🗑️
-      </button>
-    </li>
-  );
-}
-
-export default function Home() {
+function Home() {
   const { user } = useAuth();
   const { groupId, loading: loadingGroup } = useGroup();
   const {
@@ -104,15 +41,12 @@ export default function Home() {
     editarTarefa,
   } = useTarefas(groupId);
 
-  // Ativa e registra o Service Worker / Web Push para o usuário atual
   usePushManager(user?.id);
-
   const onlineUsers = usePresence(
     groupId,
     user ? { id: user.id, email: user.email! } : null,
   );
 
-  // Estados locais
   const [localTarefas, setLocalTarefas] = useState<any[]>([]);
   const [badgeContador, setBadgeContador] = useState(0);
   const [input, setInput] = useState("");
@@ -121,42 +55,30 @@ export default function Home() {
   const [erro, setErro] = useState<string | null>(null);
   const router = useRouter();
 
-  // Sincroniza a lista local quando os dados brutos mudarem ou sofrerem realtime
   useEffect(() => {
     setLocalTarefas(tarefas);
   }, [tarefas]);
 
-  // Efeito: Calcula o Badge de Tarefas Não Vistas
   useEffect(() => {
     if (tarefas.length === 0 || !user || !groupId) return;
-
-    // Pega o ID da maior tarefa vista na última sessão/interação
     const ultimoIdVisto = Number(
       localStorage.getItem(`ultimo_id_visto_${groupId}`) || 0,
     );
-
-    // Filtra tarefas que: pertencem ao parceiro, têm ID maior que o guardado e não estão prontas
     const novasNaoVistas = tarefas.filter(
       (t) => t.id > ultimoIdVisto && t.user_id !== user.id && !t.feita,
     );
-
     setBadgeContador(novasNaoVistas.length);
   }, [tarefas, user, groupId]);
 
-  // Efeito: Limpa o badge quando o usuário interagir ativamente com o app
   useEffect(() => {
     if (tarefas.length === 0 || !groupId) return;
-
     const marcarComoLidas = () => {
       const maiorId = Math.max(...tarefas.map((t) => t.id));
       localStorage.setItem(`ultimo_id_visto_${groupId}`, maiorId.toString());
       setBadgeContador(0);
     };
-
-    // Registra os listeners para limpar o badge de forma sutil
     window.addEventListener("focus", marcarComoLidas);
     window.addEventListener("click", marcarComoLidas);
-
     return () => {
       window.removeEventListener("focus", marcarComoLidas);
       window.removeEventListener("click", marcarComoLidas);
@@ -173,9 +95,15 @@ export default function Home() {
     }
   }, [user, loading, loadingGroup]);
 
-  // Configuração dos sensores do Dnd-Kit
+  // Sensores configurados para mobile (delay de 250ms evita conflito com scroll)
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -197,7 +125,6 @@ export default function Home() {
     }
   };
 
-  // Processa o final do evento de arrastar e salva no Supabase
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -335,7 +262,9 @@ export default function Home() {
         </DndContext>
       )}
       <Chat groupId={groupId} user={user} />
-      <ReleaseModal/>
+      <ReleaseModal />
     </main>
   );
 }
+
+export default Home;

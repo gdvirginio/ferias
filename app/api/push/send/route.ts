@@ -2,15 +2,27 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import webpush from "web-push";
 
-// Configuração do Web Push com as chaves do ambiente
-webpush.setVapidDetails(
-  "mailto:seu-email@dominio.com",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+// Captura as variáveis de ambiente sem forçar com "!"
+const subject = "mailto:seu-email@dominio.com";
+const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const privateKey = process.env.VAPID_PRIVATE_KEY;
+
+// Blinda o build da Vercel: Só executa se as chaves de fato existirem no ambiente
+if (publicKey && privateKey) {
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+}
 
 export async function POST(request: Request) {
   try {
+    // Validação em Runtime: se alguém tentar usar a rota sem as chaves configuradas no servidor
+    if (!publicKey || !privateKey) {
+      console.error("Web Push: Chaves VAPID não configuradas no ambiente.");
+      return NextResponse.json(
+        { error: "Configuração de notificações incompleta no servidor." },
+        { status: 500 },
+      );
+    }
+
     const { groupId, senderId, senderName, conteudoTarefa } =
       await request.json();
 
@@ -57,7 +69,11 @@ export async function POST(request: Request) {
       body: `${senderName || "Seu amor"} adicionou: "${conteudoTarefa}"`,
     });
 
-    await webpush.sendNotification(pushData.subscription as any, payload);
+    // Tipagem explícita usando unknown antes de any para satisfazer linters rigorosos
+    await webpush.sendNotification(
+      pushData.subscription as unknown as webpush.PushSubscription,
+      payload,
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
