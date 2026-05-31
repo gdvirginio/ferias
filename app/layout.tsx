@@ -15,6 +15,13 @@ const roboto = Roboto_Mono({
 export const metadata: Metadata = {
   title: "Planos para as férias",
   description: "Gerencie seus planos com carinho",
+  manifest: "/manifest.json",
+  themeColor: "#7a27c7",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Planos para as férias",
+  },
 };
 
 export default function RootLayout({
@@ -29,6 +36,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#3b82f6" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
