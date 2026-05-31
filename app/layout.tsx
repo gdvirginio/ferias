@@ -62,6 +62,7 @@ export default function RootLayout({
       <head>
         {/* 1. Script de Tema inserido de forma bloqueante intencional, super rápido */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <link rel="shortcut icon" href="/icon.png" type="image/x-icon" />
       </head>
       <body className="min-h-full flex flex-col">
         {children}
