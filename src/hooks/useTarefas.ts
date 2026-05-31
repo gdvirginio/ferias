@@ -7,6 +7,7 @@ export interface Tarefa {
   feita: boolean;
   user_id: string;
   group_id: string;
+  ordem: number;
 }
 
 export function useTarefas(groupId: string | null) {
@@ -18,26 +19,44 @@ export function useTarefas(groupId: string | null) {
       .from("tarefas")
       .select("*")
       .eq("group_id", groupId)
-      .order("id", { ascending: true });
+      .order("ordem", { ascending: true }); // Atualizado para ordenar pelo drag and drop
     if (error) console.error("Erro:", error);
     else setTarefas(data || []);
   }, [groupId]);
 
   const adicionarTarefa = async (texto: string) => {
     if (!texto.trim() || !groupId) return;
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
+
+    // Salva a nova tarefa no final da lista usando tarefas.length
     await supabase.from("tarefas").insert([
       {
         conteudo: texto,
         feita: false,
         user_id: user.id,
         group_id: groupId,
+        ordem: tarefas.length,
       },
     ]);
-  }; // ← esse estava faltando
+
+    // Dispara a chamada da API de notificação de forma limpa e isolada
+    fetch("/api/push/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        groupId,
+        senderId: user.id,
+        senderName: user.user_metadata?.nome || "Seu amor",
+        conteudoTarefa: texto, // Corrigido de conteudoTarefa para texto
+      }),
+    }).catch((err) => console.error("Erro ao enviar push:", err));
+  };
 
   const alternarTarefa = async (id: number, statusAtual: boolean) => {
     await supabase.from("tarefas").update({ feita: !statusAtual }).eq("id", id);

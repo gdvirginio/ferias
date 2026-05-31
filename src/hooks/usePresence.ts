@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 type UserPresence = {
   user_id: string;
   email: string;
+  nome?: string;
   online_at: string;
 };
 
@@ -28,9 +29,13 @@ export function usePresence(
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
           await channel.track({
             user_id: currentUser.id,
             email: currentUser.email,
+            nome: user?.user_metadata?.nome || currentUser.email.split("@")[0],
             online_at: new Date().toISOString(),
           });
         }

@@ -1,22 +1,24 @@
 {
-  "name": "Amor Tarefas",
-  "short_name": "Amor Tarefas",
-  "description": "Lista de tarefas do casal",
+  "name": "Planos para as férias",
+  "short_name": "Planos",
+  "description": "Lista de tarefas e chat do casal",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#0b0f19",
   "theme_color": "#3b82f6",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icon.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icon.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
